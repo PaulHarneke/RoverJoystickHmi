@@ -15,7 +15,10 @@ const HOST = process.env.HOST || '0.0.0.0';
 const HMI_ORIGIN = process.env.HMI_ORIGIN || 'https://169.254.75.59';
 const CERT_PATH = process.env.CERT_PATH || path.join(__dirname, 'certs', 'server.crt');
 const KEY_PATH = process.env.KEY_PATH || path.join(__dirname, 'certs', 'server.key');
-const NODE_RED_HTTP_URL = process.env.NODE_RED_HTTP_URL || 'http://127.0.0.1:1880/joystick';
+const rawNodeRedUrl = process.env.NODE_RED_HTTP_URL || 'http://127.0.0.1:1880/joystick';
+const NODE_RED_HTTP_URL = rawNodeRedUrl.trim();
+const NODE_RED_ENABLED = NODE_RED_HTTP_URL.length > 0;
+const NODE_RED_RETRY_COOLDOWN_MS = Number.parseInt(process.env.NODE_RED_RETRY_COOLDOWN_MS, 10) || 10000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
 const HTTPS_OPTIONS = (() => {
@@ -99,6 +102,13 @@ const state = {
 const NODE_RED_THROTTLE_MS = 50;
 let lastNodeRedDispatch = 0;
 let nodeRedTimeout = null;
+let nodeRedNextAttemptAt = 0;
+let nodeRedCooldownTimer = null;
+let nodeRedSuppressedWarningLogged = false;
+
+if (!NODE_RED_ENABLED) {
+  console.info('[Node-RED] HTTP forwarding disabled. Set NODE_RED_HTTP_URL to enable.');
+}
 
 function broadcast(payload, exclude) {
   const data = JSON.stringify(payload);
@@ -117,35 +127,81 @@ function broadcast(payload, exclude) {
 }
 
 async function postToNodeRed(body) {
+  if (!NODE_RED_ENABLED) {
+    return;
+  }
+
+  const now = Date.now();
+  if (nodeRedNextAttemptAt && now < nodeRedNextAttemptAt) {
+    return;
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
     const response = await fetch(NODE_RED_HTTP_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
       signal: controller.signal
     });
-    clearTimeout(timeout);
     if (!response.ok) {
       const text = await response.text().catch(() => '');
       console.error(`[Node-RED] HTTP ${response.status}:`, text);
+    }
+    nodeRedNextAttemptAt = 0;
+    nodeRedSuppressedWarningLogged = false;
+    if (nodeRedCooldownTimer) {
+      clearTimeout(nodeRedCooldownTimer);
+      nodeRedCooldownTimer = null;
     }
   } catch (error) {
     if (error.name === 'AbortError') {
       console.warn('[Node-RED] Request timed out');
     } else {
-      console.error('[Node-RED] Request failed:', error);
+      const errorCode = error?.cause?.code || error.code;
+      if (errorCode === 'ECONNREFUSED') {
+        nodeRedNextAttemptAt = Date.now() + NODE_RED_RETRY_COOLDOWN_MS;
+        if (!nodeRedSuppressedWarningLogged) {
+          console.warn(
+            `[Node-RED] Unable to reach ${NODE_RED_HTTP_URL} (ECONNREFUSED). Suppressing requests for ${NODE_RED_RETRY_COOLDOWN_MS}ms.`
+          );
+          nodeRedSuppressedWarningLogged = true;
+        }
+
+        if (!nodeRedCooldownTimer) {
+          const delay = Math.max(0, nodeRedNextAttemptAt - Date.now());
+          nodeRedCooldownTimer = setTimeout(() => {
+            nodeRedCooldownTimer = null;
+            scheduleNodeRedPush();
+          }, delay || NODE_RED_RETRY_COOLDOWN_MS);
+          if (typeof nodeRedCooldownTimer.unref === 'function') {
+            nodeRedCooldownTimer.unref();
+          }
+        }
+      } else {
+        console.error('[Node-RED] Request failed:', error);
+      }
     }
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
 function scheduleNodeRedPush() {
+  if (!NODE_RED_ENABLED) {
+    return;
+  }
+
   const now = Date.now();
 
   const dispatch = () => {
     lastNodeRedDispatch = Date.now();
     nodeRedTimeout = null;
+    if (nodeRedNextAttemptAt && Date.now() < nodeRedNextAttemptAt) {
+      return;
+    }
     const snapshot = {
       mode: state.mode,
       stick: state.stick,
