@@ -1,0 +1,247 @@
+:root {
+  color-scheme: light dark;
+  --bg: #101820;
+  --fg: #f1f5f9;
+  --accent: #00b894;
+  --accent-muted: rgba(0, 184, 148, 0.25);
+  --header-bg: rgba(15, 23, 42, 0.85);
+  --card-bg: rgba(30, 41, 59, 0.7);
+  --font-stack: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  touch-action: manipulation;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-stack);
+  background: var(--bg);
+  color: var(--fg);
+  min-height: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  display: flex;
+  justify-content: center;
+}
+
+.app {
+  width: min(480px, 100vw);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.65));
+}
+
+.app__header {
+  padding: 1rem 1.5rem 0.75rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+  background: var(--header-bg);
+  backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.app__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+
+.mode-toggle {
+  display: grid;
+  grid-template-columns: auto auto auto;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.mode-toggle__label {
+  font-size: 0.95rem;
+  opacity: 0.85;
+}
+
+.switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 72px;
+  height: 36px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch__slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 999px;
+  transition: background 0.2s ease;
+  box-shadow: inset 0 0 0 2px rgba(148, 163, 184, 0.4);
+}
+
+.switch__slider::before {
+  content: '';
+  position: absolute;
+  height: 28px;
+  width: 28px;
+  left: 4px;
+  top: 4px;
+  background: var(--fg);
+  border-radius: 50%;
+  transition: transform 0.2s ease, background 0.2s ease;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.35);
+}
+
+.switch input:checked + .switch__slider {
+  background: var(--accent-muted);
+  box-shadow: inset 0 0 0 2px rgba(16, 185, 129, 0.4);
+}
+
+.switch input:checked + .switch__slider::before {
+  transform: translateX(36px);
+  background: var(--accent);
+}
+
+.status {
+  font-size: 0.9rem;
+  text-align: center;
+  opacity: 0.7;
+}
+
+.status[data-state='connected'] {
+  color: #34d399;
+  opacity: 1;
+}
+
+.status[data-state='connecting'],
+.status[data-state='reconnecting'] {
+  color: #f59e0b;
+  opacity: 0.9;
+}
+
+.status[data-state='error'] {
+  color: #f87171;
+  opacity: 1;
+}
+
+.app__main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 1.5rem 2rem;
+}
+
+.joystick {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.joystick__pad {
+  position: relative;
+  width: min(80vw, 320px);
+  height: min(80vw, 320px);
+  border-radius: 50%;
+  background: var(--card-bg);
+  border: 2px solid rgba(148, 163, 184, 0.35);
+  box-shadow: inset 0 0 24px rgba(15, 23, 42, 0.6), 0 18px 36px rgba(15, 23, 42, 0.4);
+  touch-action: none;
+}
+
+.joystick__pad::after {
+  content: '';
+  position: absolute;
+  inset: 18%;
+  border-radius: 50%;
+  border: 1px dashed rgba(148, 163, 184, 0.35);
+}
+
+.joystick__thumb {
+  position: absolute;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(241, 245, 249, 0.95), rgba(148, 163, 184, 0.4));
+  border: 2px solid rgba(226, 232, 240, 0.45);
+  box-shadow: 0 20px 30px rgba(15, 23, 42, 0.45);
+  --dx: 0px;
+  --dy: 0px;
+  transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy)));
+  left: 50%;
+  top: 50%;
+  transition: transform 0.12s ease;
+  touch-action: none;
+}
+
+.joystick__pad.is-dragging .joystick__thumb {
+  transition-duration: 0s;
+}
+
+.joystick__pad.is-disabled .joystick__thumb {
+  opacity: 0.4;
+}
+
+.telemetry {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1.5rem;
+  padding: 1rem 1.25rem;
+  background: var(--card-bg);
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.4);
+}
+
+.telemetry div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.telemetry dt {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.6;
+}
+
+.telemetry dd {
+  margin: 0;
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 420px) {
+  .app__header {
+    padding-inline: 1rem;
+  }
+
+  .joystick__pad {
+    width: min(86vw, 280px);
+    height: min(86vw, 280px);
+  }
+
+  .joystick__thumb {
+    width: 84px;
+    height: 84px;
+  }
+}

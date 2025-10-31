@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Rover HMI</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <div class="app">
+      <header class="app__header">
+        <div class="app__title">Rover Control</div>
+        <div class="mode-toggle" role="group" aria-label="Mode selector">
+          <span class="mode-toggle__label">Automatic</span>
+          <label class="switch" aria-label="Toggle manual mode">
+            <input type="checkbox" id="modeSwitch" />
+            <span class="switch__slider" aria-hidden="true"></span>
+          </label>
+          <span class="mode-toggle__label">Manual</span>
+        </div>
+        <div class="status" id="statusText">Disconnected</div>
+      </header>
+      <main class="app__main">
+        <section class="joystick" aria-live="polite">
+          <div class="joystick__pad" id="joystickPad">
+            <div class="joystick__thumb" id="joystickThumb"></div>
+          </div>
+          <dl class="telemetry">
+            <div>
+              <dt>Mode</dt>
+              <dd id="modeValue">automatic</dd>
+            </div>
+            <div>
+              <dt>X</dt>
+              <dd id="xValue">0.00</dd>
+            </div>
+            <div>
+              <dt>Y</dt>
+              <dd id="yValue">0.00</dd>
+            </div>
+            <div>
+              <dt>Magnitude</dt>
+              <dd id="magValue">0.00</dd>
+            </div>
+            <div>
+              <dt>Degrees</dt>
+              <dd id="degValue">0°</dd>
+            </div>
+          </dl>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
