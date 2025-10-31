@@ -33,6 +33,18 @@
     return Math.min(Math.max(value, min), max);
   }
 
+  function normalizeDegrees(value) {
+    return ((value % 360) + 360) % 360;
+  }
+
+  function calculateJoystickDegrees(x, y) {
+    if (Math.abs(x) < Number.EPSILON && Math.abs(y) < Number.EPSILON) {
+      return 0;
+    }
+    const standardDegrees = Math.atan2(y, x) * (180 / Math.PI);
+    return normalizeDegrees(90 - standardDegrees);
+  }
+
   function updateTelemetryDisplay() {
     modeValue.textContent = state.mode;
     xValue.textContent = state.stick.x.toFixed(2);
@@ -59,9 +71,9 @@
     const mag = clamp(Number.isFinite(magValue) ? magValue : Math.hypot(x, y), 0, 1);
     let deg = Number(stick.deg);
     if (!Number.isFinite(deg)) {
-      deg = ((Math.atan2(y, x) * (180 / Math.PI)) + 360) % 360;
+      deg = calculateJoystickDegrees(x, y);
     } else {
-      deg = ((deg % 360) + 360) % 360;
+      deg = normalizeDegrees(deg);
     }
     state.stick = { x, y, mag, deg };
     updateTelemetryDisplay();
@@ -140,7 +152,7 @@
     const normalizedX = clamp(rawX, -1, 1);
     const normalizedY = clamp(-rawY, -1, 1);
     const magnitude = clamp(Math.hypot(normalizedX, normalizedY), 0, 1);
-    const degrees = ((Math.atan2(normalizedY, normalizedX) * (180 / Math.PI)) + 360) % 360;
+    const degrees = calculateJoystickDegrees(normalizedX, normalizedY);
 
     const nextStick = {
       x: normalizedX,
